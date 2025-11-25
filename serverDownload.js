@@ -156,18 +156,19 @@ function escapeAttribute(str) {
     return String(str || '').replace(/"/g, '&quot;');
 }
 
-const cssContent = \`body {
+const cssContent = `body {
     background-color: #0e0e10;
     color: white;
     font-family: system-ui, sans-serif;
     margin: 0;
-    padding: 10px;
+    padding: 0;
     overflow-x: hidden;
 }
 #app {
     position: relative;
     width: 100%;
     min-height: 100px;
+    padding: 10px;
 }
 .teb-wrapper {
     position: absolute;

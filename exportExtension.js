@@ -23,13 +23,14 @@ body {
     color: white;
     font-family: system-ui, sans-serif;
     margin: 0;
-    padding: 10px;
+    padding: 0;
     overflow-x: hidden;
 }
 #app {
     position: relative;
     width: 100%;
     min-height: 100px;
+    padding: 10px;
 }
 .teb-wrapper {
     position: absolute;
