@@ -2,7 +2,7 @@ import JSZip from 'jszip';
 import saveAs from 'file-saver';
 import { views } from './script.js';
 
-export function setupExport({ btnExport, saveCurrentViewState, renderElementContent }) {
+export function setupExport({ btnExport, saveCurrentViewState }) {
     btnExport.addEventListener('click', async () => {
         // Save current view state before exporting to ensure latest changes are captured
         saveCurrentViewState();
@@ -12,7 +12,7 @@ export function setupExport({ btnExport, saveCurrentViewState, renderElementCont
         // 1. Generate HTML for ALL views
         for (const key of Object.keys(views)) {
             const view = views[key];
-            const htmlContent = generateHTMLForView(view, renderElementContent);
+            const htmlContent = generateHTMLForView(view);
             zip.file(view.filename, htmlContent);
         }
 
@@ -27,9 +27,13 @@ body {
     overflow-x: hidden;
 }
 #app {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    position: relative;
+    width: 100%;
+    min-height: 100px;
+}
+.teb-wrapper {
+    position: absolute;
+    box-sizing: border-box;
 }
 .teb-btn {
     border: none;
@@ -60,9 +64,11 @@ twitch.onAuthorized((auth) => {
 });
 
 // Add basic interactions
-document.querySelectorAll('.teb-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        console.log('Button clicked:', btn.textContent);
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.teb-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            console.log('Button clicked:', btn.textContent);
+        });
     });
 });
         `;
@@ -110,12 +116,35 @@ document.querySelectorAll('.teb-btn').forEach(btn => {
     });
 }
 
-function generateHTMLForView(view, renderElementContent) {
-    // Generate elements HTML
-    const elementsHTML = view.elements.map(el => {
-        const tempWrapper = document.createElement('div');
-        renderElementContent(tempWrapper, el.type, el.props);
-        return tempWrapper.innerHTML;
+function generateHTMLForView(view) {
+    const elementsHTML = (view.elements || []).map(el => {
+        const type = el.type;
+        const data = el.props || {};
+        const layout = getLayoutStyle(data);
+
+        let inner = '';
+        switch(type) {
+            case 'text':
+                inner = `<div class="teb-text" style="color:${escapeAttr(data.color)};font-size:${escapeAttr(data.size)};text-align:${escapeAttr(data.align)};">${escapeHtml(data.text || '')}</div>`;
+                break;
+            case 'button':
+                inner = `<button class="teb-btn" style="background-color:${escapeAttr(data.bgColor)};color:${escapeAttr(data.color)};">${escapeHtml(data.label || '')}</button>`;
+                break;
+            case 'container':
+                inner = `<div class="teb-container" style="background-color:${escapeAttr(data.bgColor)};padding:${escapeAttr(data.padding)};border-radius:${escapeAttr(data.radius)};color:#aaa;font-size:0.8rem;text-align:center;border:1px dashed #444;">Container Area</div>`;
+                break;
+            case 'image':
+                inner = `<img class="teb-image" src="${escapeAttr(data.src || '')}" alt="${escapeAttr(data.alt || '')}" />`;
+                break;
+            case 'divider':
+                inner = `<div class="teb-divider" style="background-color:${escapeAttr(data.color)};margin:${escapeAttr(data.margin)} 0;"></div>`;
+                break;
+            default:
+                inner = '';
+        }
+
+        if (!inner) return '';
+        return `<div class="teb-wrapper" style="${layout}">${inner}</div>`;
     }).join('\n');
 
     // Special styles for overlay/component (Transparency)
@@ -127,16 +156,40 @@ function generateHTMLForView(view, renderElementContent) {
     return `<!DOCTYPE html>
 <html>
 <head>
-    <title>${view.label}</title>
+    <title>${escapeHtml(view.label || '')}</title>
     <link rel="stylesheet" href="panel.css">
     ${extraStyle}
 </head>
 <body>
     <div id="app">
-        ${elementsHTML}
+${elementsHTML}
     </div>
     <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
     <script src="viewer.js"></script>
 </body>
 </html>`;
+}
+
+function getLayoutStyle(data) {
+    const x = typeof data.x === 'number' ? data.x : 0;
+    const y = typeof data.y === 'number' ? data.y : 0;
+    const w = typeof data.width === 'number' ? data.width : null;
+    const h = typeof data.height === 'number' ? data.height : null;
+
+    let style = `left:${x}px;top:${y}px;`;
+    if (w !== null) style += `width:${w}px;`;
+    if (h !== null) style += `height:${h}px;`;
+    return style;
+}
+
+function escapeHtml(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function escapeAttr(str) {
+    return String(str || '').replace(/"/g, '&quot;');
 }

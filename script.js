@@ -12,6 +12,7 @@ polyfill({
 // State
 let currentSelection = null;
 let nextId = 1;
+let currentMode = 'move'; // 'move' | 'interact' | 'edit'
 
 // View State Management
 export const views = {
@@ -37,6 +38,8 @@ const liveStatusEl = document.getElementById('live-status');
 const panelHeightControl = document.getElementById('panel-height-control');
 const panelHeightButtons = panelHeightControl ? panelHeightControl.querySelectorAll('.panel-height-btn') : [];
 const panelHeightCustomInput = document.getElementById('panel-height-custom-input');
+const modeToggle = document.getElementById('mode-toggle');
+const modeButtons = modeToggle ? modeToggle.querySelectorAll('.mode-btn') : [];
 
 // --- Live status UI ---
 
@@ -129,6 +132,27 @@ if (panelHeightCustomInput) {
         }
     });
 }
+
+// --- Mode switching ---
+
+modeButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const mode = btn.dataset.mode;
+        if (!mode || mode === currentMode) return;
+        currentMode = mode;
+
+        modeButtons.forEach(b => b.classList.toggle('active', b === btn));
+
+        // Update cursor/interaction on existing elements
+        canvas.querySelectorAll('.element-wrapper').forEach(wrapper => {
+            if (currentMode === 'interact') {
+                wrapper.classList.add('interact-mode');
+            } else {
+                wrapper.classList.remove('interact-mode');
+            }
+        });
+    });
+});
 
 // --- View Switching ---
 
@@ -325,9 +349,15 @@ function renderElementToCanvas(type, props) {
     // Add resize handles
     addResizeHandles(wrapper);
 
+    // Apply current mode cursor state
+    if (currentMode === 'interact') {
+        wrapper.classList.add('interact-mode');
+    }
+
     // Click to edit (but ignore when clicking on resize handles)
     wrapper.addEventListener('click', (e) => {
         if (e.target.classList.contains('resize-handle')) return;
+        if (currentMode !== 'edit') return;
         e.stopPropagation();
         selectElement(wrapper);
     });
@@ -340,8 +370,8 @@ function renderElementToCanvas(type, props) {
 
 function applyWrapperLayout(wrapper, props) {
     wrapper.style.position = 'absolute';
-    wrapper.style.left = props.x + 'px';
-    wrapper.style.top = props.y + 'px';
+    wrapper.style.left = (typeof props.x === 'number' ? props.x : 0) + 'px';
+    wrapper.style.top = (typeof props.y === 'number' ? props.y : 0) + 'px';
     if (typeof props.width === 'number') {
         wrapper.style.width = props.width + 'px';
     } else {
@@ -355,6 +385,8 @@ function applyWrapperLayout(wrapper, props) {
 }
 
 function addResizeHandles(wrapper) {
+    // Avoid duplicating handles if they already exist
+    if (wrapper.querySelector('.resize-handle')) return;
     const positions = ['nw', 'ne', 'sw', 'se'];
     positions.forEach(pos => {
         const handle = document.createElement('div');
@@ -449,7 +481,8 @@ function addDragAndResizeHandlers(wrapper) {
     };
 
     // Drag start
-    wrapper.addEventListener('mousedown', (e) => {
+    wrapper.addEventListener('mousemove', (e) => {
+        if (currentMode !== 'move') return;
         if (e.target.classList.contains('resize-handle')) return;
         e.preventDefault();
         const rect = wrapper.getBoundingClientRect();
@@ -464,6 +497,7 @@ function addDragAndResizeHandlers(wrapper) {
     });
 
     wrapper.addEventListener('touchstart', (e) => {
+        if (currentMode !== 'move') return;
         if (e.target.classList.contains('resize-handle')) return;
         const touch = e.touches[0];
         const rect = wrapper.getBoundingClientRect();
@@ -479,7 +513,8 @@ function addDragAndResizeHandlers(wrapper) {
 
     // Resize start
     wrapper.querySelectorAll('.resize-handle').forEach(handle => {
-        handle.addEventListener('mousedown', (e) => {
+        handle.addEventListener('mousemove', (e) => {
+            if (currentMode !== 'move') return;
             e.stopPropagation();
             e.preventDefault();
             const rect = wrapper.getBoundingClientRect();
@@ -497,6 +532,7 @@ function addDragAndResizeHandlers(wrapper) {
         });
 
         handle.addEventListener('touchstart', (e) => {
+            if (currentMode !== 'move') return;
             e.stopPropagation();
             const touch = e.touches[0];
             const rect = wrapper.getBoundingClientRect();
@@ -575,7 +611,7 @@ export function renderElementContent(wrapper, type, data) {
 
     if (content) wrapper.appendChild(content);
 
-    // Ensure resize handles exist after rerender
+    // Ensure resize handles exist after rerender (only in builder)
     addResizeHandles(wrapper);
 }
 
@@ -719,9 +755,7 @@ function notifyProjectChanged() {
 // Initialize modular features
 setupExport({
     btnExport,
-    views,
-    saveCurrentViewState,
-    renderElementContent
+    saveCurrentViewState
 });
 
 setupServerDownload({

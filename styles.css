@@ -119,7 +119,7 @@ body {
     max-width: var(--panel-width);
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     gap: 8px;
 }
 
@@ -185,6 +185,41 @@ body {
 
 .panel-height-custom input[type=number] {
     -moz-appearance: textfield;
+}
+
+/* Interaction mode toggle */
+.mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background-color: var(--dark-surface);
+    padding: 2px;
+    border-radius: 999px;
+    border: 1px solid var(--dark-border);
+}
+
+.mode-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.mode-btn.active {
+    background-color: var(--twitch-purple);
+    color: #fff;
+}
+
+.mode-btn i {
+    pointer-events: none;
 }
 
 /* Canvas */
@@ -254,6 +289,10 @@ body {
     margin-bottom: 0;
     cursor: move;
     box-sizing: border-box;
+}
+
+.element-wrapper.interact-mode {
+    cursor: default;
 }
 
 .element-wrapper:hover {

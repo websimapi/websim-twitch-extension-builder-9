@@ -93,17 +93,18 @@ function generateHTMLForView(view) {
     const elementsHTML = (view.elements || []).map(el => {
         const type = el.type;
         const data = el.props || {};
+        const layout = getLayoutStyle(data);
         switch(type) {
             case 'text':
-                return \`<div class="teb-text" style="color:\${data.color};font-size:\${data.size};text-align:\${data.align};">\${escapeHtml(data.text || '')}</div>\`;
+                return \`<div class="teb-wrapper" style="\${layout}"><div class="teb-text" style="color:\${escapeAttribute(data.color)};font-size:\${escapeAttribute(data.size)};text-align:\${escapeAttribute(data.align)};">\${escapeHtml(data.text || '')}</div></div>\`;
             case 'button':
-                return \`<button class="teb-btn" style="background-color:\${data.bgColor};color:\${data.color};">\${escapeHtml(data.label || '')}</button>\`;
+                return \`<div class="teb-wrapper" style="\${layout}"><button class="teb-btn" style="background-color:\${escapeAttribute(data.bgColor)};color:\${escapeAttribute(data.color)};">\${escapeHtml(data.label || '')}</button></div>\`;
             case 'container':
-                return \`<div class="teb-container" style="background-color:\${data.bgColor};padding:\${data.padding};border-radius:\${data.radius};color:#aaa;font-size:0.8rem;text-align:center;border:1px dashed #444;">Container Area</div>\`;
+                return \`<div class="teb-wrapper" style="\${layout}"><div class="teb-container" style="background-color:\${escapeAttribute(data.bgColor)};padding:\${escapeAttribute(data.padding)};border-radius:\${escapeAttribute(data.radius)};color:#aaa;font-size:0.8rem;text-align:center;border:1px dashed #444;">Container Area</div></div>\`;
             case 'image':
-                return \`<img class="teb-image" src="\${escapeAttribute(data.src || '')}" alt="\${escapeAttribute(data.alt || '')}" />\`;
+                return \`<div class="teb-wrapper" style="\${layout}"><img class="teb-image" src="\${escapeAttribute(data.src || '')}" alt="\${escapeAttribute(data.alt || '')}" /></div>\`;
             case 'divider':
-                return \`<div class="teb-divider" style="background-color:\${data.color};margin:\${data.margin} 0;"></div>\`;
+                return \`<div class="teb-wrapper" style="\${layout}"><div class="teb-divider" style="background-color:\${escapeAttribute(data.color)};margin:\${escapeAttribute(data.margin)} 0;"></div></div>\`;
             default:
                 return '';
         }
@@ -117,7 +118,7 @@ function generateHTMLForView(view) {
     return \`<!DOCTYPE html>
 <html>
 <head>
-    <title>\${view.label}</title>
+    <title>\${escapeHtml(view.label || '')}</title>
     <link rel="stylesheet" href="panel.css">
     \${extraStyle}
 </head>
@@ -129,6 +130,18 @@ function generateHTMLForView(view) {
     <script src="viewer.js"></script>
 </body>
 </html>\`;
+}
+
+function getLayoutStyle(data) {
+    const x = typeof data.x === 'number' ? data.x : 0;
+    const y = typeof data.y === 'number' ? data.y : 0;
+    const w = typeof data.width === 'number' ? data.width : null;
+    const h = typeof data.height === 'number' ? data.height : null;
+
+    let style = \`left:\${x}px;top:\${y}px;\`;
+    if (w !== null) style += \`width:\${w}px;\`;
+    if (h !== null) style += \`height:\${h}px;\`;
+    return style;
 }
 
 function escapeHtml(str) {
@@ -152,9 +165,13 @@ const cssContent = \`body {
     overflow-x: hidden;
 }
 #app {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    position: relative;
+    width: 100%;
+    min-height: 100px;
+}
+.teb-wrapper {
+    position: absolute;
+    box-sizing: border-box;
 }
 .teb-btn {
     border: none;
