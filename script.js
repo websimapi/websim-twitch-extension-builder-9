@@ -13,6 +13,7 @@ polyfill({
 let currentSelection = null;
 let nextId = 1;
 let currentMode = 'move'; // 'move' | 'interact' | 'edit'
+let snapMode = 'on'; // 'on' | 'off'
 
 // View State Management
 export const views = {
@@ -40,6 +41,8 @@ const panelHeightButtons = panelHeightControl ? panelHeightControl.querySelector
 const panelHeightCustomInput = document.getElementById('panel-height-custom-input');
 const modeToggle = document.getElementById('mode-toggle');
 const modeButtons = modeToggle ? modeToggle.querySelectorAll('.mode-btn') : [];
+const snapToggle = document.getElementById('snap-toggle');
+const snapButtons = snapToggle ? snapToggle.querySelectorAll('.snap-btn') : [];
 
 // --- Live status UI ---
 
@@ -154,6 +157,16 @@ modeButtons.forEach(btn => {
     });
 });
 
+// Snap / Free toggle
+snapButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const mode = btn.dataset.snap === 'off' ? 'off' : 'on';
+        if (mode === snapMode) return;
+        snapMode = mode;
+        snapButtons.forEach(b => b.classList.toggle('active', b === btn));
+    });
+});
+
 // --- View Switching ---
 
 document.querySelectorAll('.view-tab').forEach(tab => {
@@ -223,6 +236,76 @@ function renderCurrentView() {
 // Utility: snap to grid for cleaner alignment
 function snapToGrid(value, grid = 5) {
     return Math.round(value / grid) * grid;
+}
+
+// Utility: simple overlap check between two rectangles
+function rectsOverlap(a, b) {
+    return !(
+        a.right <= b.left ||
+        a.left >= b.right ||
+        a.bottom <= b.top ||
+        a.top >= b.bottom
+    );
+}
+
+// Apply snapping to avoid overlaps (simple vertical nudge)
+function applySnap(wrapper) {
+    if (snapMode !== 'on') return;
+
+    const rect = canvas.getBoundingClientRect();
+    const props = JSON.parse(wrapper.dataset.props || '{}');
+
+    const width = typeof props.width === 'number' ? props.width : wrapper.offsetWidth;
+    const height = typeof props.height === 'number' ? props.height : wrapper.offsetHeight;
+
+    let x = typeof props.x === 'number' ? props.x : 0;
+    let y = typeof props.y === 'number' ? props.y : 0;
+
+    const others = Array.from(canvas.querySelectorAll('.element-wrapper')).filter(w => w !== wrapper);
+
+    const step = 5;
+    let safety = 0;
+
+    const makeRect = () => ({
+        left: x,
+        top: y,
+        right: x + width,
+        bottom: y + height
+    });
+
+    const hasOverlap = () => {
+        const r = makeRect();
+        return others.some(w => {
+            const wp = JSON.parse(w.dataset.props || '{}');
+            const ww = typeof wp.width === 'number' ? wp.width : w.offsetWidth;
+            const wh = typeof wp.height === 'number' ? wp.height : w.offsetHeight;
+            const wx = typeof wp.x === 'number' ? wp.x : 0;
+            const wy = typeof wp.y === 'number' ? wp.y : 0;
+            const or = { left: wx, top: wy, right: wx + ww, bottom: wy + wh };
+            return rectsOverlap(r, or);
+        });
+    };
+
+    while (hasOverlap() && safety < 500) {
+        // Move down by step; if out of canvas, wrap downwards from top
+        y += step;
+        if (y + height > rect.height) {
+            y = 0;
+            x += step;
+            if (x + width > rect.width) {
+                x = rect.width - width;
+            }
+        }
+        safety++;
+    }
+
+    props.x = snapToGrid(x);
+    props.y = snapToGrid(y);
+    props.width = width;
+    props.height = height;
+
+    wrapper.dataset.props = JSON.stringify(props);
+    applyWrapperLayout(wrapper, props);
 }
 
 function updateCanvasMode(viewId) {
@@ -404,6 +487,11 @@ function addDragAndResizeHandlers(wrapper) {
 
     const onMouseMove = (e) => {
         if (!isDragging && !isResizing) return;
+
+        if (e.touches && e.touches.length) {
+            e.preventDefault();
+        }
+
         const rect = canvas.getBoundingClientRect();
         const props = JSON.parse(wrapper.dataset.props);
 
@@ -472,6 +560,10 @@ function addDragAndResizeHandlers(wrapper) {
         if (isDragging || isResizing) {
             isDragging = false;
             isResizing = false;
+
+            // Apply non-overlap snapping if enabled
+            applySnap(wrapper);
+
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('touchmove', onMouseMove);
             document.removeEventListener('mouseup', endInteraction);
@@ -480,32 +572,36 @@ function addDragAndResizeHandlers(wrapper) {
         }
     };
 
-    // Drag start
-    wrapper.addEventListener('mousemove', (e) => {
+    // Drag start (mouse)
+    wrapper.addEventListener('mousedown', (e) => {
         if (currentMode !== 'move') return;
+        if (e.button !== 0) return; // left button only
         if (e.target.classList.contains('resize-handle')) return;
         e.preventDefault();
         const rect = wrapper.getBoundingClientRect();
         isDragging = true;
+        const canvasRect = canvas.getBoundingClientRect();
         dragStart.x = e.clientX;
         dragStart.y = e.clientY;
-        dragStart.left = rect.left - canvas.getBoundingClientRect().left;
-        dragStart.top = rect.top - canvas.getBoundingClientRect().top;
+        dragStart.left = rect.left - canvasRect.left;
+        dragStart.top = rect.top - canvasRect.top;
 
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', endInteraction);
     });
 
+    // Drag start (touch)
     wrapper.addEventListener('touchstart', (e) => {
         if (currentMode !== 'move') return;
         if (e.target.classList.contains('resize-handle')) return;
         const touch = e.touches[0];
         const rect = wrapper.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
         isDragging = true;
         dragStart.x = touch.clientX;
         dragStart.y = touch.clientY;
-        dragStart.left = rect.left - canvas.getBoundingClientRect().left;
-        dragStart.top = rect.top - canvas.getBoundingClientRect().top;
+        dragStart.left = rect.left - canvasRect.left;
+        dragStart.top = rect.top - canvasRect.top;
 
         document.addEventListener('touchmove', onMouseMove, { passive: false });
         document.addEventListener('touchend', endInteraction);
@@ -513,36 +609,41 @@ function addDragAndResizeHandlers(wrapper) {
 
     // Resize start
     wrapper.querySelectorAll('.resize-handle').forEach(handle => {
-        handle.addEventListener('mousemove', (e) => {
+        // Mouse resize
+        handle.addEventListener('mousedown', (e) => {
             if (currentMode !== 'move') return;
+            if (e.button !== 0) return;
             e.stopPropagation();
             e.preventDefault();
             const rect = wrapper.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
             isResizing = true;
             resizeStart.x = e.clientX;
             resizeStart.y = e.clientY;
             resizeStart.width = rect.width;
             resizeStart.height = rect.height;
-            resizeStart.left = rect.left - canvas.getBoundingClientRect().left;
-            resizeStart.top = rect.top - canvas.getBoundingClientRect().top;
+            resizeStart.left = rect.left - canvasRect.left;
+            resizeStart.top = rect.top - canvasRect.top;
             resizeStart.dir = handle.dataset.dir;
 
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', endInteraction);
         });
 
+        // Touch resize
         handle.addEventListener('touchstart', (e) => {
             if (currentMode !== 'move') return;
             e.stopPropagation();
             const touch = e.touches[0];
             const rect = wrapper.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
             isResizing = true;
             resizeStart.x = touch.clientX;
             resizeStart.y = touch.clientY;
             resizeStart.width = rect.width;
             resizeStart.height = rect.height;
-            resizeStart.left = rect.left - canvas.getBoundingClientRect().left;
-            resizeStart.top = rect.top - canvas.getBoundingClientRect().top;
+            resizeStart.left = rect.left - canvasRect.left;
+            resizeStart.top = rect.top - canvasRect.top;
             resizeStart.dir = handle.dataset.dir;
 
             document.addEventListener('touchmove', onMouseMove, { passive: false });
