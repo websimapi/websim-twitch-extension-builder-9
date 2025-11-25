@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Twitch Extension Builder</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Import Map for Dependencies -->
+    <script type="importmap">
+    {
+        "imports": {
+            "jszip": "https://esm.sh/jszip@3.10.1",
+            "file-saver": "https://esm.sh/file-saver@2.0.5",
+            "mobile-drag-drop": "https://esm.sh/mobile-drag-drop@2.3.0-rc.2",
+            "mobile-drag-drop/scroll-behaviour": "https://esm.sh/mobile-drag-drop@2.3.0-rc.2/scroll-behaviour",
+            "node-forge": "https://esm.sh/node-forge@1.3.1"
+        }
+    }
+    </script>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="top-bar">
+            <div class="logo"><i class="fab fa-twitch"></i> Ext. Builder</div>
+            <div class="actions">
+                <div id="live-status" class="live-status disconnected" title="Live sync status">
+                    <span class="dot"></span>
+                    <span class="label">Offline</span>
+                </div>
+                <button id="btn-download-server" class="btn secondary" title="Download Local Server"><i class="fas fa-server"></i> Server</button>
+                <button id="btn-export-extension" class="btn primary" title="Export Extension"><i class="fas fa-file-export"></i> Export</button>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="workspace">
+            <div class="canvas-wrapper">
+                <div class="view-tabs">
+                    <button class="view-tab active" data-view="panel">Panel</button>
+                    <button class="view-tab" data-view="mobile">Mobile</button>
+                    <button class="view-tab" data-view="component">Component</button>
+                    <button class="view-tab" data-view="overlay">Overlay</button>
+                    <button class="view-tab" data-view="config">Config</button>
+                </div>
+                <!-- Canvas header with height controls only -->
+                <div class="canvas-header">
+                    <div class="panel-height-control" id="panel-height-control">
+                        <button class="panel-height-btn" data-height="100">100px</button>
+                        <button class="panel-height-btn" data-height="300">300px</button>
+                        <button class="panel-height-btn" data-height="500">500px</button>
+                        <div class="panel-height-custom">
+                            <input id="panel-height-custom-input" type="number" min="100" max="500" placeholder="Custom">
+                        </div>
+                    </div>
+                </div>
+                <!-- The Drop Zone -->
+                <div id="panel-canvas" class="twitch-panel">
+                    <div class="empty-state">Drag items here</div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Toolbox (Draggables) -->
+        <footer class="toolbox">
+            <div class="toolbox-header">Components</div>
+            <div class="toolbox-items">
+                <div class="tool-item" draggable="true" data-type="container">
+                    <i class="far fa-square"></i>
+                    <span>Box</span>
+                </div>
+                <div class="tool-item" draggable="true" data-type="text">
+                    <i class="fas fa-font"></i>
+                    <span>Text</span>
+                </div>
+                <div class="tool-item" draggable="true" data-type="button">
+                    <i class="fas fa-mouse-pointer"></i>
+                    <span>Button</span>
+                </div>
+                <div class="tool-item" draggable="true" data-type="image">
+                    <i class="far fa-image"></i>
+                    <span>Image</span>
+                </div>
+                <div class="tool-item" draggable="true" data-type="divider">
+                    <i class="fas fa-minus"></i>
+                    <span>Line</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Property Editor Modal -->
+    <div id="property-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Properties</h3>
+                <button id="close-modal"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" id="property-form">
+                <!-- Dynamic Inputs injected here -->
+            </div>
+            <div class="modal-footer">
+                <button id="delete-element" class="btn danger">Delete</button>
+                <button id="save-properties" class="btn primary">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
+
